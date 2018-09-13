@@ -55,7 +55,7 @@ temp2 <- data.frame(temp2[,c('1','2','3','4')])
 
 
 
-transaction_data <- lapply(temp2,function(x){as.factor(x)})
+transaction_data <- sapply(temp2,function(x){as.factor(x)})
 
 
 transaction_data <- as(transaction_data,"transactions")
