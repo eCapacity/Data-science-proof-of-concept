@@ -66,18 +66,14 @@ ga_data <- google_analytics(viewId="37002615",
 # 
 # LIST(head(transaction_data,2))
 
-#taking just the transactionId and productName columns from the dataset
-new_data <- ga_data[,c("transactionId","productName")]
+#changing the data to transaction data
 
-#changing the columns to the class factor
-new_data <- lapply(new_data,function(x){as.factor(x)})
+trans <- as(split(ga_data[,"productName"],ga_data[,"transactionId"]),"transactions")
 
-#changing the dataframe to transaction data
-transactions <- as(new_data,"transactions")
+rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.5))
 
-rules <- apriori(transactions, parameter = list(support = 0.5, confidence = 0.5))
+inspect(head(rules))
 
- 
  
 
 
