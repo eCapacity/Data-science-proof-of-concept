@@ -21,7 +21,7 @@ ga_auth()
 som <- function(x){
   as.Date(format(x,"%Y-%m-01"))
 }
-som(som(Sys.Date())-1)
+som(som(Sys.Date())-40)
 
 #function to find end of last month
 eom<- function(x){
@@ -32,7 +32,7 @@ som(Sys.Date())-1
 
 #pull data from GA (ID for German eshop)
 ga_data <- google_analytics(viewId="37002615",
-                              date_range=c(som(som(Sys.Date())-1),som(Sys.Date())-1),
+                              date_range=c(som(som(Sys.Date())-40),som(Sys.Date())-1),
                               metrics=c("ga:itemQuantity","ga:itemRevenue"),
                               dimensions=c("ga:productName","transactionId"),anti_sample=TRUE)
 # 
@@ -67,14 +67,27 @@ ga_data <- google_analytics(viewId="37002615",
 # LIST(head(transaction_data,2))
 
 #changing the data to transaction data
-
 trans <- as(split(ga_data[,"productName"],ga_data[,"transactionId"]),"transactions")
 
-rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.5))
+#see which items are purchased the most frequently
+frequentItems <- eclat(trans,parameter = list(supp=0.001,maxlen=15))
+inspect(frequentItems)
+itemFrequencyPlot(trans, topN=10,type="absolute",main="Item Frequency")
 
+#generate rules
+rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05))
+
+#view first 6 rules
 inspect(head(rules))
 
- 
+#sort rules by lift amd view top 6 rules
+rules_lift <- sort (rules, by="lift", decreasing=TRUE)
+inspect(head(rules_lift)) 
 
+#find rules when ZZZ 220 is purchased
+rules <- apriori (data=trans, parameter=list (supp=0.001,conf = 0.08), appearance = list (default="rhs",lhs="ZZZ 220"), control = list (verbose=F))
 
+#sort and view top rules by confidence
+rules_conf <- sort (rules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
+inspect(head(rules_conf))
 
