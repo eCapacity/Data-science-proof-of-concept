@@ -3,12 +3,13 @@ install.packages('googleAnalyticsR')
 
 #install anaysis packages
 install.packages('arules')
-
+install.packages('arulesViz')
 
 
 #load packages
 library(googleAnalyticsR)
 library(arules)
+library(arulesViz)
 library(tidyr)
 library(dplyr)
 
@@ -69,13 +70,16 @@ ga_data <- google_analytics(viewId="37002615",
 #changing the data to transaction data
 trans <- as(split(ga_data[,"productName"],ga_data[,"transactionId"]),"transactions")
 
-#see which items are purchased the most frequently
+#see which items are purchased the most frequently (just number of times it appears in transaction (not quantity))
 frequentItems <- eclat(trans,parameter = list(supp=0.001,maxlen=15))
-inspect(frequentItems)
+inspect(head(frequentItems))
 itemFrequencyPlot(trans, topN=10,type="absolute",main="Item Frequency")
 
 #generate rules
-rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05))
+rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05,minlen=2))
+
+#plot rules
+plot(rules)
 
 #view first 6 rules
 inspect(head(rules))
@@ -85,7 +89,7 @@ rules_lift <- sort (rules, by="lift", decreasing=TRUE)
 inspect(head(rules_lift)) 
 
 #find rules when ZZZ 220 is purchased
-rules <- apriori (data=trans, parameter=list (supp=0.001,conf = 0.08), appearance = list (default="rhs",lhs="ZZZ 220"), control = list (verbose=F))
+rules <- apriori (data=trans, parameter=list (supp=0.001,conf = 0.05,minlen=2), appearance = list (default="rhs",lhs="ZZZ 220"), control = list (verbose=F))
 
 #sort and view top rules by confidence
 rules_conf <- sort (rules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
