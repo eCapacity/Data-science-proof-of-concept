@@ -41,13 +41,24 @@ ga_data <- google_analytics(viewId="37002615",
 #subset data
 new_data <- ga_data[,c("productName","transactionId")]
 
-#modify skew to remove window size because that is specific to a user
+#modify skew to keep blind type and color
 for(i in 1: length(new_data$productName)){
   temp <- strsplit(as.character(ga_data$productName[i]),split=" ")
   if(length(temp[[1]])>2){
     new_data$productName[i] <- paste(temp[[1]][1],temp[[1]][3])
   }
 }
+
+#modify skew to keep just blind type
+for(i in 1: length(new_data$productName)){
+  temp <- strsplit(as.character(ga_data$productName[i]),split=" ")
+  if(length(temp[[1]])>1){
+    new_data$productName[i] <- temp[[1]][1]
+  }
+}
+
+
+
 
 
 # 
@@ -86,7 +97,15 @@ inspect(head(frequentItems))
 itemFrequencyPlot(trans, topN=10,type="absolute",main="Item Frequency")
 
 #generate rules
+#multiple items in basket
 rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05,minlen=2))
+
+#any number of items in basket
+rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05))
+
+#only 1 item in cart
+rules <- apriori(trans, parameter = list(support = 0.0001, confidence = 0.005, maxlen=1))
+
 
 #plot rules
 plot(rules)
@@ -94,14 +113,50 @@ plot(rules)
 #view first 6 rules
 inspect(head(rules))
 
-#sort rules by lift amd view top 6 rules
-rules_lift <- sort (rules, by="lift", decreasing=TRUE)
+#sort rules and view top 6 rules
+rules_lift <- sort (rules, by="confidence", decreasing=TRUE)
 inspect(head(rules_lift)) 
 
 #find rules when ZZZ 220 is purchased
-rules <- apriori (data=trans, parameter=list (supp=0.001,conf = 0.05,minlen=2), appearance = list (default="rhs",lhs="MHL 5060D"), control = list (verbose=F))
+rules <- apriori (data=trans, parameter=list (supp=0.00001,conf = 0.0005), appearance = list (default="lhs",rhs="ZZZ"))
 
 #sort and view top rules by confidence
 rules_conf <- sort (rules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
 inspect(head(rules_conf))
+
+
+subrules <- subset(rules, count>15)
+rules_conf <- sort (subrules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
+inspect(head(rules_conf))
+
+
+plot(rules,method="graph",control=list(layout=igraph::in_circle()))
+
+
+plot(rules, method="matrix3D", measure="lift")
+
+
+plot(rules, method="grouped")
+
+
+plot(rules, method = "paracoord")
+plot(rules, method = "scatterplot",engine='htmlwidget')
+
+
+onerule<-sample(rules,1)
+plot(onerule, method = "doubledecker",data = trans)
+
+
+
+
+## for itemsets
+itemsets <- eclat(trans, parameter = list(support = 0.001, minlen=2))
+plot(itemsets)
+plot(itemsets, method="graph")
+plot(itemsets, method="paracoord", control=list(alpha=.05, reorder=TRUE))
+
+## add more quality measures to use for the scatterplot
+quality(itemsets) <- interestMeasure(itemsets, trans=trans)
+head(quality(itemsets))
+plot(itemsets, measure=c("support", "allConfidence"), shading="lift",engine='htmlwidget')
 
