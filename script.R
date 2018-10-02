@@ -16,24 +16,24 @@ library(dplyr)
 
 
 #sign into velux@ecapacity.dk Google Account
-ga_auth()
+ga_auth(new_user = T)
 
 #function to find start of last month
 som <- function(x){
   as.Date(format(x,"%Y-%m-01"))
 }
-som(som(Sys.Date())-40)
+som(som(Sys.Date())-70)
 
 #function to find end of last month
 eom<- function(x){
-  som(som(x)+35)-1
+  som(som(x))-1
 }
-som(Sys.Date())-1
+eom(Sys.Date()-10)
 
 
 #pull data from GA (ID for German eshop)
 ga_data <- google_analytics(viewId="37002615",
-                              date_range=c(som(som(Sys.Date())-40),som(Sys.Date())-1),
+                              date_range=c(som(som(Sys.Date())-70),eom(Sys.Date()-10)),
                               metrics=c("ga:itemQuantity","ga:itemRevenue"),
                               dimensions=c("ga:productName","transactionId"),anti_sample=TRUE)
 
@@ -41,7 +41,7 @@ ga_data <- google_analytics(viewId="37002615",
 #subset data
 new_data <- ga_data[,c("productName","transactionId")]
 
-#modify skew to keep blind type and color
+#modify sku to keep blind type and color
 for(i in 1: length(new_data$productName)){
   temp <- strsplit(as.character(ga_data$productName[i]),split=" ")
   if(length(temp[[1]])>2){
@@ -49,13 +49,58 @@ for(i in 1: length(new_data$productName)){
   }
 }
 
-#modify skew to keep just blind type
+#modify sku to keep just blind type
 for(i in 1: length(new_data$productName)){
   temp <- strsplit(as.character(ga_data$productName[i]),split=" ")
   if(length(temp[[1]])>1){
     new_data$productName[i] <- temp[[1]][1]
   }
 }
+
+
+####Analysis####
+
+#changing the data to transaction data
+trans <- as(split(new_data[,"productName"],new_data[,"transactionId"]),"transactions")
+
+#see which items are purchased the most frequently (just number of times it appears in transaction (not quantity))
+frequentItems <- eclat(trans,parameter = list(supp=0.001,maxlen=15))
+inspect(head(frequentItems))
+itemFrequencyPlot(trans, topN=10,type="absolute",main="Item Frequency")
+
+#generate rules
+#multiple items in basket
+rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05,minlen=2))
+
+#any number of items in basket
+rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05))
+
+#only 1 item in cart
+rules <- apriori(trans, parameter = list(support = 0.0001, confidence = 0.005, maxlen=1))
+
+#sort and view top rules by confidence
+rules_conf <- sort (rules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
+inspect(head(rules_conf))
+
+
+#Scatterplot
+plot(rules, method = "scatterplot",engine='htmlwidget')
+
+
+#circle chart
+plot(rules,method="graph",control=list(layout=igraph::in_circle()))
+
+
+#find rules when ZOZ is purchased
+rules <- apriori (data=trans, parameter=list (supp=0.0001,conf = 0.005), appearance = list (default="lhs",rhs="ZOZ"))
+
+#circle chart
+plot(rules,method="graph",control=list(layout=igraph::in_circle()))
+
+
+#Scatterplot
+plot(rules, method = "scatterplot",engine='htmlwidget')
+
 
 
 
@@ -88,23 +133,6 @@ for(i in 1: length(new_data$productName)){
 # 
 # LIST(head(transaction_data,2))
 
-#changing the data to transaction data
-trans <- as(split(new_data[,"productName"],new_data[,"transactionId"]),"transactions")
-
-#see which items are purchased the most frequently (just number of times it appears in transaction (not quantity))
-frequentItems <- eclat(trans,parameter = list(supp=0.001,maxlen=15))
-inspect(head(frequentItems))
-itemFrequencyPlot(trans, topN=10,type="absolute",main="Item Frequency")
-
-#generate rules
-#multiple items in basket
-rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05,minlen=2))
-
-#any number of items in basket
-rules <- apriori(trans, parameter = list(support = 0.001, confidence = 0.05))
-
-#only 1 item in cart
-rules <- apriori(trans, parameter = list(support = 0.0001, confidence = 0.005, maxlen=1))
 
 
 #plot rules
@@ -112,17 +140,6 @@ plot(rules)
 
 #view first 6 rules
 inspect(head(rules))
-
-#sort rules and view top 6 rules
-rules_lift <- sort (rules, by="confidence", decreasing=TRUE)
-inspect(head(rules_lift)) 
-
-#find rules when ZZZ 220 is purchased
-rules <- apriori (data=trans, parameter=list (supp=0.00001,conf = 0.0005), appearance = list (default="lhs",rhs="ZZZ"))
-
-#sort and view top rules by confidence
-rules_conf <- sort (rules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
-inspect(head(rules_conf))
 
 
 subrules <- subset(rules, count>15)
@@ -140,7 +157,6 @@ plot(rules, method="grouped")
 
 
 plot(rules, method = "paracoord")
-plot(rules, method = "scatterplot",engine='htmlwidget')
 
 
 onerule<-sample(rules,1)
