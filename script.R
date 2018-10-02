@@ -31,11 +31,16 @@ eom<- function(x){
 eom(Sys.Date()-10)
 
 
-#pull data from GA (ID for German eshop)
+#pull data from GA 
 ga_data <- google_analytics(viewId="37002615",
                               date_range=c(som(som(Sys.Date())-70),eom(Sys.Date()-10)),
                               metrics=c("ga:itemQuantity","ga:itemRevenue"),
                               dimensions=c("ga:productName","transactionId"),anti_sample=TRUE)
+
+
+
+#Fortnum GA ID 93647780
+#VELUX DE Shop GA ID 37002615
 
 
 #subset data
@@ -66,7 +71,7 @@ trans <- as(split(new_data[,"productName"],new_data[,"transactionId"]),"transact
 #see which items are purchased the most frequently (just number of times it appears in transaction (not quantity))
 frequentItems <- eclat(trans,parameter = list(supp=0.001,maxlen=15))
 inspect(head(frequentItems))
-itemFrequencyPlot(trans, topN=10,type="absolute",main="Item Frequency")
+itemFrequencyPlot(trans, topN=5,type="absolute",main="Item Frequency")
 
 #generate rules
 #multiple items in basket
@@ -91,8 +96,14 @@ plot(rules, method = "scatterplot",engine='htmlwidget')
 plot(rules,method="graph",control=list(layout=igraph::in_circle()))
 
 
-#find rules when ZOZ is purchased
-rules <- apriori (data=trans, parameter=list (supp=0.0001,conf = 0.005), appearance = list (default="lhs",rhs="ZOZ"))
+
+#find rules when MHL is purchased
+rules <- apriori (data=trans, parameter=list (supp=0.001,conf = 0.005,minlen=2), appearance = list (default="rhs",lhs="MHL"))
+
+
+#sort and view top rules by confidence
+rules_conf <- sort (rules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
+inspect(head(rules_conf))
 
 #circle chart
 plot(rules,method="graph",control=list(layout=igraph::in_circle()))
@@ -102,7 +113,23 @@ plot(rules,method="graph",control=list(layout=igraph::in_circle()))
 plot(rules, method = "scatterplot",engine='htmlwidget')
 
 
+#confidence vs number of rules
+j<-1
+rule_details<-data.frame(matrix(NA,length(seq(0.05,1,by=.05)),2))
+colnames(rule_details)<-c('confidence','number_of_rules')
+for(i in seq(0.05,1,by=.05)){
+  
+  rules <- apriori (data=trans, parameter=list (supp=0.001,conf = i))
+  
+  rule_details$confidence[j]<-i
+  rule_details$number_of_rules[j]<-length(size(rules))
+  
+  j<-j+1
+  }
 
+
+ggplot(rule_details, aes(x = confidence, y = number_of_rules)) + 
+  geom_point() + geom_line()
 
 
 
@@ -132,47 +159,47 @@ plot(rules, method = "scatterplot",engine='htmlwidget')
 # 
 # 
 # LIST(head(transaction_data,2))
-
-
-
-#plot rules
-plot(rules)
-
-#view first 6 rules
-inspect(head(rules))
-
-
-subrules <- subset(rules, count>15)
-rules_conf <- sort (subrules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
-inspect(head(rules_conf))
-
-
-plot(rules,method="graph",control=list(layout=igraph::in_circle()))
-
-
-plot(rules, method="matrix3D", measure="lift")
-
-
-plot(rules, method="grouped")
-
-
-plot(rules, method = "paracoord")
-
-
-onerule<-sample(rules,1)
-plot(onerule, method = "doubledecker",data = trans)
-
-
-
-
-## for itemsets
-itemsets <- eclat(trans, parameter = list(support = 0.001, minlen=2))
-plot(itemsets)
-plot(itemsets, method="graph")
-plot(itemsets, method="paracoord", control=list(alpha=.05, reorder=TRUE))
-
-## add more quality measures to use for the scatterplot
-quality(itemsets) <- interestMeasure(itemsets, trans=trans)
-head(quality(itemsets))
-plot(itemsets, measure=c("support", "allConfidence"), shading="lift",engine='htmlwidget')
+#
+#
+# 
+# #plot rules
+# plot(rules)
+# 
+# #view first 6 rules
+# inspect(head(rules))
+# 
+# 
+# subrules <- subset(rules, count>15)
+# rules_conf <- sort (subrules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
+# inspect(head(rules_conf))
+# 
+# 
+# plot(rules,method="graph",control=list(layout=igraph::in_circle()))
+# 
+# 
+# plot(rules, method="matrix3D", measure="lift")
+# 
+# 
+# plot(rules, method="grouped")
+# 
+# 
+# plot(rules, method = "paracoord")
+# 
+# 
+# onerule<-sample(rules,1)
+# plot(onerule, method = "doubledecker",data = trans)
+# 
+# 
+# 
+# 
+# ## for itemsets
+# itemsets <- eclat(trans, parameter = list(support = 0.001, minlen=2))
+# plot(itemsets)
+# plot(itemsets, method="graph")
+# plot(itemsets, method="paracoord", control=list(alpha=.05, reorder=TRUE))
+# 
+# ## add more quality measures to use for the scatterplot
+# quality(itemsets) <- interestMeasure(itemsets, trans=trans)
+# head(quality(itemsets))
+# plot(itemsets, measure=c("support", "allConfidence"), shading="lift",engine='htmlwidget')
 
