@@ -12,6 +12,7 @@ library(arules)
 library(arulesViz)
 library(tidyr)
 library(dplyr)
+library(ggplot2)
 
 
 
@@ -44,7 +45,7 @@ ga_data <- google_analytics(viewId="37002615",
 
 
 #subset data
-new_data <- ga_data[,c("productName","transactionId")]
+new_data <- data.frame(ga_data[,c("productName","transactionId")])
 
 #modify sku to keep blind type and color
 for(i in 1: length(new_data$productName)){
@@ -94,6 +95,7 @@ plot(rules, method = "scatterplot",engine='htmlwidget')
 
 #circle chart
 plot(rules,method="graph",control=list(layout=igraph::in_circle()))
+plot(rules,method="graph")
 
 
 
